@@ -505,12 +505,23 @@ class MinerScorer:
                 s3_component = float(self.s3_boosts[uid]) * s3_cred
                 od_component = float(self.ondemand_boosts[uid]) * od_cred
 
+                # TEMPORARY: S3 capped at 2x on-demand component.
+                # Prevents fabricators from profiting purely off S3 volume.
+                # Legit miners with real OD participation still get rewarded for S3.
+                # Will be replaced by proper incentive redesign.
+                s3_uncapped = s3_component
+                if od_component > 0:
+                    s3_component = min(s3_component, od_component * 2)
+                else:
+                    s3_component = 0.0
+
                 score = p2p_component + s3_component + od_component
 
                 bt.logging.info(
                     f"Miner {uid} score breakdown: "
                     f"P2P={p2p_component:.0f} (raw={float(self.scorable_bytes[uid]):.0f}, cred={float(self.miner_credibility[uid]):.4f}), "
-                    f"S3={s3_component:.0f} (boost={float(self.s3_boosts[uid]):.0f}, cred={float(self.s3_credibility[uid]):.4f}), "
+                    f"S3={s3_component:.0f} (boost={float(self.s3_boosts[uid]):.0f}, cred={float(self.s3_credibility[uid]):.4f})"
+                    f"{f', capped from {s3_uncapped:.0f}' if s3_uncapped != s3_component else ''}, "
                     f"OD={od_component:.0f} (boost={float(self.ondemand_boosts[uid]):.0f}, cred={float(self.ondemand_credibility[uid]):.4f})"
                 )
 
