@@ -720,7 +720,7 @@ class DuckDBSampledValidator:
 
                 # --- PyArrow row-group read for empty/missing content check ---
                 if platform in ['x', 'twitter']:
-                    read_cols = ['url', 'text', 'view_count', 'tweet_id']
+                    read_cols = ['url', 'text', 'view_count', 'tweet_id', 'username']
                 else:
                     read_cols = ['url', 'body', 'title', 'id']
                 read_cols = [c for c in read_cols if c in available_columns]
@@ -755,6 +755,20 @@ class DuckDBSampledValidator:
                         title_empty = rg_df.get('title', pd.Series(dtype=str)).fillna('').str.strip() == ''
                         empty_mask = body_empty & title_empty
                     empty_count += int(empty_mask.sum())
+
+                    # X-only: empty username = instant fail (fabricated data)
+                    if platform in ['x', 'twitter'] and 'username' in rg_df.columns:
+                        empty_user = rg_df['username'].fillna('').astype(str).str.strip() == ''
+                        empty_user_pct = empty_user.sum() / len(rg_df) * 100
+                        if empty_user_pct > 50:
+                            bt.logging.warning(f"Empty username: {empty_user_pct:.0f}% rows have no username: {file_key}")
+                            return {
+                                "success": False,
+                                "duplicate_rate_within_job": 100.0,
+                                "empty_rate": 100.0,
+                                "total_rows": 0,
+                                "reason": f"Empty username in {empty_user_pct:.0f}% of X rows"
+                            }
 
                     # X-only: engagement, uniqueness, and URL↔tweet_id consistency
                     if platform in ['x', 'twitter']:
