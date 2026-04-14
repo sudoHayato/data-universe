@@ -162,16 +162,21 @@ class MinerScorer:
                 self.ondemand_credibility.fill_(MinerScorer.STARTING_ONDEMAND_CREDIBILITY)
 
             if saved_version < 8:
-                # -> v8: S3 reset — strict schema check (missing columns = fail) catches
-                # fabricated data that previously passed. Miners with inflated effective_size
-                # from template-generated parquet files must re-earn their scores.
+                # -> v8: Full reset — strict schema check (missing columns = fail)
+                # catches fabricated S3 data; OD was blindly rewarding unvalidated
+                # submissions. Both channels have tainted scores that must be wiped.
                 bt.logging.warning(
                     f"State migration v{saved_version} -> v8: "
-                    f"S3 score reset (strict schema validation)."
+                    f"Full score reset (strict schema + OD validation fix)."
                 )
+                self.scores.zero_()
+                self.miner_credibility.fill_(MinerScorer.STARTING_CREDIBILITY)
+                self.scorable_bytes.zero_()
                 self.s3_boosts.zero_()
                 self.s3_credibility.fill_(MinerScorer.STARTING_S3_CREDIBILITY)
                 self.effective_sizes.zero_()
+                self.ondemand_boosts.zero_()
+                self.ondemand_credibility.fill_(MinerScorer.STARTING_ONDEMAND_CREDIBILITY)
 
     def get_scores(self) -> torch.Tensor:
         """Returns the raw scores of all miners."""
