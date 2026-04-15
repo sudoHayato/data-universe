@@ -17,6 +17,7 @@ class CachedMinerODResult:
     speed_multiplier: float
     volume_multiplier: float
     failure_reason: Optional[str] = None
+    s3_presigned_url: Optional[str] = None  # stored at poll time so evaluator can download directly
 
 
 class ODJobCache:
@@ -62,7 +63,7 @@ class ODJobCache:
                 for jid in to_remove:
                     self._processed_jobs.discard(jid)
 
-            bt.logging.trace(
+            bt.logging.debug(
                 f"ODJobCache: cached {len(results)} miner results for job {job_id}"
             )
 
@@ -81,7 +82,7 @@ class ODJobCache:
         with self._lock:
             results = self._results.pop(hotkey, [])
             if results:
-                bt.logging.trace(
+                bt.logging.debug(
                     f"ODJobCache: drained {len(results)} results for {hotkey[:16]}..."
                 )
             return results
